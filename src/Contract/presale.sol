@@ -16,6 +16,8 @@ contract TokenPresale is Pausable, Ownable {
     IERC20 public usdt;
     uint256 public rate;
     uint256 public endTime;
+    uint256 public tokensSold; //已经售出代币数量
+    uint256 public startTime; // 预售开始时间变量
 
     uint256 public constant minPurchaseAmount = 10 * 10**6; // Minimum purchase amount: 10 USDT
 
@@ -27,12 +29,26 @@ contract TokenPresale is Pausable, Ownable {
     event TokensPurchased(address indexed buyer, uint256 usdtAmount, uint256 tokenAmount);
     event ReferralReward(address indexed referrer, uint256 amount);
 
-    constructor(IERC20 _token, IERC20 _usdt, uint256 _rate, uint256 _endTime) {
+    constructor(IERC20 _token, IERC20 _usdt, uint256 _rate) {
         require(address(_token) != address(0), "Token address cannot be the zero address.");
         require(address(_usdt) != address(0), "USDT address cannot be the zero address.");
         token = _token;
         usdt = _usdt;
         rate = _rate;
+        startTime = 0; // 初始化开始时间为 0
+        endTime = 0;   // 初始化结束时间为 0
+    }
+
+    // 设置预售开始时间
+   function setStartTime() external onlyOwner {
+        require(endTime == 0 || block.timestamp < endTime, "Start time must be less than end time.");
+        startTime = block.timestamp;
+    }
+
+     // 设置预售结束时间
+    function setEndTime(uint256 _endTime) external onlyOwner {
+        require(_endTime > 0, "End time must be greater than 0.");
+        require(startTime == 0 || _endTime > startTime, "End time must be greater than start time.");
         endTime = _endTime;
     }
 
@@ -40,6 +56,8 @@ contract TokenPresale is Pausable, Ownable {
     function depositTokens(uint256 _amount) external onlyOwner {
         require(_amount > 0, "Amount must be greater than 0.");
         require(token.balanceOf(msg.sender) >= _amount, "Not enough tokens in your account.");
+        require(startTime > 0 && endTime > 0, "Start and end times must be set.");
+        require(block.timestamp >= startTime && block.timestamp < endTime, "Token presale is not active.");
         token.safeTransferFrom(msg.sender, address(this), _amount);
     }
 
@@ -60,6 +78,9 @@ contract TokenPresale is Pausable, Ownable {
 
         // Transfer tokens to buyer
             token.safeTransfer(msg.sender, tokensToBuy);
+
+        // 更新已经售出代币数量
+            tokensSold = tokensSold.add(tokensToBuy);    
 
     // 发出事件
     emit TokensPurchased(msg.sender, _usdtAmount, tokensToBuy);
@@ -104,5 +125,10 @@ function pause() external onlyOwner {
 function unpause() external onlyOwner {
     _unpause();
 }
+
+function getTokensSold() public view returns (uint256) {
+    return tokensSold;
+}
+
 
 }
