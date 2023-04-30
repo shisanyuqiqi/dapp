@@ -15,6 +15,7 @@ import {
   Form,
   Divider,
   message,
+  Tooltip,Space
 } from "antd";
 import { AppstoreOutlined } from "@ant-design/icons";
 
@@ -26,7 +27,7 @@ const providerOptions = {
 };
 
 const web3Modal = new Web3Modal({
-  network: "mainnet",
+  network: "binance-testnet",
   cacheProvider: true,
   providerOptions,
 });
@@ -38,6 +39,15 @@ function App() {
   const [usdtAmount, setUsdtAmount] = useState(10);
   const [referrerAddress, setReferrerAddress] = useState("");
   const [referrerRewardBalance, setReferrerRewardBalance] = useState(0);
+
+  const [tokensSold, setTokensSold] = useState(0);
+  const [targetAmount, setTargetAmount] = useState(1000000); // 您的目标数量，可以根据需要进行调整
+
+  const [startTime, setStartTime] = useState(null);
+  const [endTime, setEndTime] = useState(null);
+  const [progress, setProgress] = useState(0);
+
+  const [referrerFromLink, setReferrerFromLink] = useState(false);
 
   const tokenAddress = "0xcDaDB1D9ae238dB553aB88A7c5356F4b518C76Cb";
   const presaleAddress = "0xb54B91EAa5f56804d7f10ba012EEB93b1dCC6F2D";
@@ -53,7 +63,32 @@ function App() {
     if (connected) {
       fetchReferrerRewardBalance();
     }
+    if (connected) {
+      fetchTokensSold();
+    }
+    if (connected) {
+      fetchStartTimeAndEndTime();
+    }
+    if (!connected) {
+      const urlSearchParams = new URLSearchParams(window.location.search);
+      const referrerParam = urlSearchParams.get("referrer");
+      if (referrerParam) {
+        setReferrerAddress(referrerParam);
+        setReferrerFromLink(true);
+      }
+    }
+    if (connected) {
+      fetchReferrerRewardBalance();
+    }
+    if (connected) {
+      fetchTokensSold();
+    }
   }, [connected]);
+
+  useEffect(() => {
+    const percentage = (tokensSold / targetAmount) * 100;
+    setProgress(percentage);
+  }, [tokensSold, targetAmount]);
 
   const generateReferralLink = (walletAddress) => {
     const baseUrl = window.location.href;
@@ -76,6 +111,42 @@ function App() {
       }
     } catch (error) {
       console.error("连接钱包时发生错误：", error);
+    }
+  }
+
+  async function fetchStartTimeAndEndTime() {
+    if (!connected || !web3) {
+      return;
+    }
+
+    try {
+      const presaleContract = new web3.eth.Contract(
+        TokenPresale_ABI,
+        presaleAddress
+      );
+      const start = await presaleContract.methods.startTime().call();
+      const end = await presaleContract.methods.endTime().call();
+      setStartTime(start);
+      setEndTime(end);
+    } catch (error) {
+      console.error("获取开始和结束时间时发生错误：", error);
+    }
+  }
+
+  async function fetchTokensSold() {
+    if (!connected || !web3) {
+      return;
+    }
+
+    try {
+      const presaleContract = new web3.eth.Contract(
+        TokenPresale_ABI,
+        presaleAddress
+      );
+      const sold = await presaleContract.methods.getTokensSold().call();
+      setTokensSold(sold);
+    } catch (error) {
+      console.error("获取已售出代币数量时发生错误：", error);
     }
   }
 
@@ -139,16 +210,20 @@ function App() {
     if (!connected || !web3) {
       return;
     }
-  
+
     try {
-      const presaleContract = new web3.eth.Contract(TokenPresale_ABI, presaleAddress);
-      const rewards = await presaleContract.methods.getReferrerRewards(account).call();
+      const presaleContract = new web3.eth.Contract(
+        TokenPresale_ABI,
+        presaleAddress
+      );
+      const rewards = await presaleContract.methods
+        .getReferrerRewards(account)
+        .call();
       setReferrerRewardBalance(rewards);
     } catch (error) {
       console.error("获取推荐奖励余额时发生错误：", error);
     }
   }
-  
 
   return (
     <Layout className="layout">
@@ -175,13 +250,28 @@ function App() {
         <div className="site-layout-content">
           {/* 主视觉Banner */}
           <Title level={2}>YUTU2.0 Token Prasale</Title>
-          <Text>预售活动倒计时：00:00:00</Text>
+          <Text>
+            预售活动开始时间：
+            {startTime && new Date(startTime * 1000).toLocaleString()}
+          </Text>
+          <Text>
+            预售活动结束时间：
+            {endTime && new Date(endTime * 1000).toLocaleString()}
+          </Text>
+
           <Title level={4}>机制：买卖6% 营销1%，销毁1%，回流1%，分红3%</Title>
 
           {/* 代币预售区域 */}
           <Title level={3}>代币预售</Title>
-          <Progress percent={75} status="active" />
-          <Text>已售出的代币数量 / 目标数量</Text>
+          <Progress
+            percent={progress}
+            status="active"
+            showInfo={false}
+            strokeLinecap="square"
+          />
+          <Text>
+            已售出代币数量：{tokensSold} / {targetAmount}
+          </Text>
 
           <Row gutter={[16, 16]} style={{ marginTop: "20px" }}>
             <Col span={12}>
@@ -200,12 +290,26 @@ function App() {
                   />
                 </Form.Item>
                 <Form.Item label="推荐人地址" name="referrerAddress">
-                  <Input
-                    value={referrerAddress}
-                    onChange={(e) => setReferrerAddress(e.target.value)}
-                    placeholder="输入推荐人地址（可选）"
-                  />
+                  <Tooltip
+                    title={
+                      referrerFromLink
+                        ? "通过推荐链接进来自动填入"
+                        : ""
+                    }
+                    visible={referrerFromLink}
+                    placement="bottomLeft"
+                    overlayStyle={{ top: "520px", right: "100px" }}
+
+                  >
+                    <Input
+                      value={referrerAddress}
+                      onChange={(e) => setReferrerAddress(e.target.value)}
+                      placeholder="输入推荐人地址（可选）"
+                      disabled={referrerFromLink}
+                    />
+                  </Tooltip>
                 </Form.Item>
+
                 <Form.Item>
                   <Button onClick={buyTokens}>购买代币</Button>
                 </Form.Item>
@@ -217,16 +321,10 @@ function App() {
               <Divider />
               <Title level={3}>推荐奖励</Title>
               <Text>
-                您的推荐奖励余额：
+                您的累积推荐奖励：
                 {web3.utils.fromWei(referrerRewardBalance.toString())} USDT
               </Text>
 
-              <Button
-                onClick={claimReferrerRewards}
-                disabled={referrerRewardBalance === 0}
-              >
-                领取推荐奖励
-              </Button>
             </>
           )}
         </div>
