@@ -50,7 +50,7 @@ function App() {
   const [referrerFromLink, setReferrerFromLink] = useState(false);
 
   const tokenAddress = "0xcDaDB1D9ae238dB553aB88A7c5356F4b518C76Cb";
-  const presaleAddress = "0xb54B91EAa5f56804d7f10ba012EEB93b1dCC6F2D";
+  const presaleAddress = "0x912e4FC014b84DE3151a01675e29a7Bc61e684cD";
 
   useEffect(() => {
     if (!connected) {
@@ -143,7 +143,8 @@ function App() {
         TokenPresale_ABI,
         presaleAddress
       );
-      const sold = await presaleContract.methods.getTokensSold().call();
+      const soldInWei = await presaleContract.methods.getTokensSold().call();
+    const sold = web3.utils.fromWei(soldInWei, 'ether');
       setTokensSold(sold);
     } catch (error) {
       console.error("获取已售出代币数量时发生错误：", error);
@@ -155,27 +156,32 @@ function App() {
       alert("请先连接钱包");
       return;
     }
-
+  
     try {
       const usdtContract = new web3.eth.Contract(IERC20_ABI, tokenAddress);
       const presaleContract = new web3.eth.Contract(
         TokenPresale_ABI,
         presaleAddress
       );
-
+  
       const amountToApprove = web3.utils.toWei(usdtAmount);
+      console.log("开始调用approve方法");
       await usdtContract.methods
         .approve(presaleAddress, amountToApprove)
         .send({ from: account });
-
+      console.log("approve方法调用成功");
+  
+      console.log("开始调用buyTokens方法");
       await presaleContract.methods
         .buyTokens(amountToApprove, referrerAddress)
         .send({ from: account });
+      console.log("buyTokens方法调用成功");
       alert("购买成功");
     } catch (error) {
       console.error("购买代币时发生错误：", error);
     }
   }
+  
 
   async function fetchReferrerRewardBalance() {
     if (!connected || !web3) {
@@ -184,7 +190,9 @@ function App() {
 
     try {
       const usdtContract = new web3.eth.Contract(IERC20_ABI, tokenAddress);
-      const balance = await usdtContract.methods.balanceOf(account).call();
+      const balanceInWei = await usdtContract.methods.balanceOf(account).call();
+      const balance = web3.utils.fromWei(balanceInWei, 'ether');
+
       setReferrerRewardBalance(balance);
     } catch (error) {
       console.error("获取推荐奖励余额时发生错误：", error);
@@ -321,9 +329,10 @@ function App() {
               <Divider />
               <Title level={3}>推荐奖励</Title>
               <Text>
-                您的累积推荐奖励：
-                {web3.utils.fromWei(referrerRewardBalance.toString())} USDT
-              </Text>
+  您的累积推荐奖励：
+  {referrerRewardBalance} USDT
+</Text>
+
 
             </>
           )}
