@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract TokenPresale is Pausable, Ownable {
+contract YutuPresale is Pausable, Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -128,6 +128,10 @@ function unpause() external onlyOwner {
 
 function getTokensSold() public view returns (uint256) {
     return tokensSold;
+}
+
+function getReferrerRewards(address referrer) public view returns (uint256) {
+    return referrerRewards[referrer];
 }
 
 

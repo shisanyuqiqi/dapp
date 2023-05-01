@@ -40,6 +40,9 @@ function App() {
   const [referrerAddress, setReferrerAddress] = useState("");
   const [referrerRewardBalance, setReferrerRewardBalance] = useState(0);
 
+  
+
+
   const [tokensSold, setTokensSold] = useState(0);
   const [targetAmount, setTargetAmount] = useState(1000000); // 您的目标数量，可以根据需要进行调整
 
@@ -50,18 +53,17 @@ function App() {
   const [referrerFromLink, setReferrerFromLink] = useState(false);
 
   const tokenAddress = "0xcDaDB1D9ae238dB553aB88A7c5356F4b518C76Cb";
-  const presaleAddress = "0x912e4FC014b84DE3151a01675e29a7Bc61e684cD";
+  const presaleAddress = "0x163d00b4D08ac8085A6a9Ec187A5836734eAc3d0";
 
   useEffect(() => {
     if (!connected) {
       const urlSearchParams = new URLSearchParams(window.location.search);
       const referrerParam = urlSearchParams.get("referrer");
       if (referrerParam) {
-        setReferrerAddress(referrerParam);
+        const referrer = referrerParam.split("?")[0]; // 添加这行代码
+        setReferrerAddress(referrer);
+        setReferrerFromLink(true);
       }
-    }
-    if (connected) {
-      fetchReferrerRewardBalance();
     }
     if (connected) {
       fetchTokensSold();
@@ -90,6 +92,16 @@ function App() {
     setProgress(percentage);
   }, [tokensSold, targetAmount]);
 
+  const copyToClipboard = (text) => {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    const result = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return result;
+  };
+  
   const generateReferralLink = (walletAddress) => {
     const baseUrl = window.location.href;
     const referralLink = `${baseUrl}?referrer=${walletAddress}`;
@@ -187,51 +199,26 @@ function App() {
     if (!connected || !web3) {
       return;
     }
-
-    try {
-      const usdtContract = new web3.eth.Contract(IERC20_ABI, tokenAddress);
-      const balanceInWei = await usdtContract.methods.balanceOf(account).call();
-      const balance = web3.utils.fromWei(balanceInWei, 'ether');
-
-      setReferrerRewardBalance(balance);
-    } catch (error) {
-      console.error("获取推荐奖励余额时发生错误：", error);
-    }
-  }
-
-  async function claimReferrerRewards() {
-    if (!connected || !web3) {
-      alert("请先连接钱包");
-      return;
-    }
-    try {
-      // 根据您的智能合约实现，您可能需要创建一个领取推荐奖励的方法
-      // 然后在这里调用它，例如：
-      // await presaleContract.methods.claimReferrerRewards().send({ from: account });
-      alert("奖励领取成功");
-    } catch (error) {
-      console.error("领取推荐奖励时发生错误：", error);
-    }
-  }
-
-  async function fetchReferrerRewardBalance() {
-    if (!connected || !web3) {
-      return;
-    }
-
+  
     try {
       const presaleContract = new web3.eth.Contract(
         TokenPresale_ABI,
         presaleAddress
       );
-      const rewards = await presaleContract.methods
+      const rewardsInWei = await presaleContract.methods
         .getReferrerRewards(account)
         .call();
-      setReferrerRewardBalance(rewards);
+      const rewardsInUsdt = web3.utils.fromWei(rewardsInWei, 'ether'); // 修改这行代码
+      setReferrerRewardBalance(rewardsInUsdt);
     } catch (error) {
       console.error("获取推荐奖励余额时发生错误：", error);
     }
   }
+  
+  
+  
+
+
 
   return (
     <Layout className="layout">
@@ -344,16 +331,19 @@ function App() {
                 <Title level={4}>您的推荐链接</Title>
                 <Input value={generateReferralLink(account)} disabled />
                 <Button
-                  type="primary"
-                  onClick={() => {
-                    navigator.clipboard.writeText(
-                      generateReferralLink(account)
-                    );
-                    message.success("链接已复制成功");
-                  }}
-                >
-                  复制链接
-                </Button>
+  type="primary"
+  onClick={() => {
+    const copied = copyToClipboard(generateReferralLink(account));
+    if (copied) {
+      message.success("链接已复制成功");
+    } else {
+      message.error("链接复制失败，请手动复制");
+    }
+  }}
+>
+  复制链接
+</Button>
+
 
                 <Divider />
               </div>
