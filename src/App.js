@@ -1,14 +1,14 @@
 import React, { useState } from "react";
-import {
-  Button,
-  Layout,
-  Menu,
-  Typography,
-} from "antd";
+import { Button, Layout, Menu, Typography } from "antd";
 import { AppstoreOutlined } from "@ant-design/icons";
-import TokenPresaleComponent from './pages/TokenPresale';
+import TokenPresaleComponent from "./pages/TokenPresale";
 import Web3Modal from "web3modal";
 import Web3 from "web3";
+
+import Home from "./pages/Home";
+import NftBlindBox from "./pages/NftBlindBox";
+import NftMarket from "./pages/NftMarket";
+import NftStaking from "./pages/NftStaking";
 
 const { Header, Content, Footer } = Layout;
 const { Title } = Typography;
@@ -27,6 +27,7 @@ function App() {
   const [connected, setConnected] = useState(false);
   const [account, setAccount] = useState(null);
   const [web3, setWeb3] = useState(null);
+  const [current, setCurrent] = useState("home");
 
   async function connectWallet() {
     try {
@@ -46,18 +47,28 @@ function App() {
     }
   }
 
+  const handleMenuClick = ({ key }) => {
+    setCurrent(key);
+  };
+
   return (
     <Layout className="layout">
       <Header>
         <div className="logo" />
-        <Menu theme="dark" mode="horizontal" defaultSelectedKeys={["1"]}>
-          <Menu.Item key="1">首页</Menu.Item>
-          <Menu.Item key="2">代币预售</Menu.Item>
-          <Menu.Item key="3">生态</Menu.Item>
-          <Menu.Item key="4">关于我们</Menu.Item>
-          <Menu.Item key="5">常见问题</Menu.Item>
+        <Menu
+          theme="dark"
+          mode="horizontal"
+          selectedKeys={[current]}
+          onClick={handleMenuClick}
+        >
+          <Menu.Item key="home">首页</Menu.Item>
+          <Menu.Item key="presale">代币预售</Menu.Item>
+          <Menu.Item key="nftblindbox">NFT盲盒</Menu.Item>
+          <Menu.Item key="market">NFT市场</Menu.Item>
+          <Menu.Item key="staking">NFT质押</Menu.Item>
+
           <Menu.Item
-            key="6"
+            key="wallet"
             icon={<AppstoreOutlined />}
             onClick={connectWallet}
           >
@@ -72,12 +83,20 @@ function App() {
           {/* 主视觉Banner */}
           <Title level={2}>YUTU2.0 Token Presale</Title>
 
-         
-          <TokenPresaleComponent
-            connected={connected}
-            account={account}
-            web3={web3}
-          />
+
+          {current === "home" && <Home />}
+          {current === "presale" && (
+            <TokenPresaleComponent
+              connected={connected}
+              account={account}
+              web3={web3}
+            />
+          )}
+          {connected && current === "nftblindbox" && (
+            <NftBlindBox account={account} web3={web3} connected={connected}/>
+          )}
+          {current === "market" && <NftMarket account={account} web3={web3} connected={connected}/>}
+          {current === "staking" && <NftStaking account={account} web3={web3} connected={connected}/>}
         </div>
       </Content>
       <Footer style={{ textAlign: "center" }}>Token Presale DApp ©2023</Footer>
